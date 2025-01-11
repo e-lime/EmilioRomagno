@@ -10,6 +10,7 @@ import math
 # Tuuuuuunings
 LOOKAHEAD_DISTANCE = 7.74
 STEERING_GAIN = 29.09
+STEERING_GAIN2 = 2.9
 THROTTLE_GAIN = 137.60
 MAX_VELOCITY = 386.0
 MIN_VELOCITY = 145.0
@@ -55,10 +56,12 @@ class EmilioRomagno(Bot):
 
         # Transform target to the car's local coordinate frame
         target_local = position.inverse() * target
+        next_target_local = position.inverse() * next_target
 
         # Calculate the distance and angle to the target in local frame
         target_distance = math.sqrt(target_local.x**2 + target_local.y**2)
         target_angle = math.atan2(target_local.y, target_local.x)
+        next_target_angle = math.atan2(next_target_local.y, next_target_local.x)
 
         # If the target is too close, skip to the next waypoint
         if target_distance < LOOKAHEAD_DISTANCE:
@@ -72,7 +75,17 @@ class EmilioRomagno(Bot):
             curvature = 0
 
         steer = curvature * STEERING_GAIN
+        # do countersteer on long stretches
+        if target_distance > LOOKAHEAD_DISTANCE:
+            curvature2 = (2 * next_target_local.y) / (LOOKAHEAD_DISTANCE**2)
+            if next_target_angle > target_angle:
+                countersteer = -1* curvature2 * STEERING_GAIN2
+            elif next_target_angle > target_angle:
+                countersteer = curvature2 * STEERING_GAIN2
+            else:
+                countersteer = 0
 
+        steer = steer + countersteer
         # Clamping steer value between -1 and 1
         steer = max(-1, min(1, steer))
 
